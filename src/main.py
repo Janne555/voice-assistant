@@ -10,9 +10,12 @@ import numpy as np
 import wave
 import contextlib
 import typing
+import os
 
 pa = pyaudio.PyAudio()
 frames_per_buffer = 512
+MODEL_PATH = "models/deepspeech-0.9.3-models.tflite" if os.uname().machine == 'armv7l' else "models/deepspeech-0.9.3-models.pbmm"
+SCORER_PATH = "models/deepspeech-0.9.3-models.scorer"
 
 class VoiceActivityMonitor(threading.Thread):
   __is_speaking = False
@@ -52,9 +55,11 @@ class VoiceActivityMonitor(threading.Thread):
         self.__is_speaking = True
         self.__prev_time_spoke = current_time
     
+
   def is_speaking(self):
     return self.__is_speaking
   
+
   def stop(self):
     self.__running = False
 
@@ -126,11 +131,10 @@ class PlayBack(threading.Thread):
     stream.close()
 
 class VoiceAssistant(threading.Thread):
-  
   def __init__(self):
     super().__init__()
-    self.__ds = deepspeech.Model("models/deepspeech-0.9.3-models.pbmm")
-    self.__ds.enableExternalScorer("models/deepspeech-0.9.3-models.scorer")
+    self.__ds = deepspeech.Model(MODEL_PATH)
+    self.__ds.enableExternalScorer(SCORER_PATH)
 
 
   def run(self):
@@ -168,11 +172,9 @@ class VoiceAssistant(threading.Thread):
       audio = np.frombuffer(data_out.readframes(data_out.getnframes()), dtype=np.int16)
       data_out.close()
 
+      print("starting inference")
       infered_text = self.__ds.stt(audio)
-      print(infered_text)
-
-
-
+      print(f"inference result: {infered_text}")
 
 
 voice_assistant = VoiceAssistant()
