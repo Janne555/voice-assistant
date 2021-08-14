@@ -125,10 +125,12 @@ class PlayBack(threading.Thread):
     stream.stop_stream()
     stream.close()
 
-
 class VoiceAssistant(threading.Thread):
+  
   def __init__(self):
     super().__init__()
+    self.__ds = deepspeech.Model("models/deepspeech-0.9.3-models.pbmm")
+    self.__ds.enableExternalScorer("models/deepspeech-0.9.3-models.scorer")
 
 
   def run(self):
@@ -149,7 +151,7 @@ class VoiceAssistant(threading.Thread):
     while True:
       wm.wait_for_wakeup_word()
 
-      data_in = wave.open("/tmp/voice-assista-temp.wav", "wb")
+      data_in = wave.open("voice-assistant-temp.wav", "wb")
       data_in.setnchannels(1)
       data_in.setsampwidth(2)
       data_in.setframerate(16000)
@@ -158,12 +160,19 @@ class VoiceAssistant(threading.Thread):
       recorder.run()
 
       data_in.close()
-      data_out = wave.open("/tmp/voice-assista-temp.wav", "rb")
+      data_out = wave.open("voice-assistant-temp.wav", "rb")
 
-      playback = PlayBack(data_out)
-      playback.run()
+      # playback = PlayBack(data_out)
+      # playback.run()
 
+      audio = np.frombuffer(data_out.readframes(data_out.getnframes()), dtype=np.int16)
       data_out.close()
+
+      infered_text = self.__ds.stt(audio)
+      print(infered_text)
+
+
+
 
 
 voice_assistant = VoiceAssistant()
