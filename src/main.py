@@ -9,6 +9,7 @@ import deepspeech
 import numpy as np
 import wave
 import contextlib
+import typing
 
 pa = pyaudio.PyAudio()
 
@@ -16,6 +17,7 @@ class VoiceActivityMonitor(threading.Thread):
   __is_speaking = False
   __prev_time_spoke = time.time()
   __vad = webrtcvad.Vad()
+  __running = True
 
   def __init__(self, silence_threshold = 1):
     super().__init__()
@@ -36,7 +38,7 @@ class VoiceActivityMonitor(threading.Thread):
       input_device_index=pa.get_default_input_device_info()['index'],
     )
 
-    while True:
+    while self.__running:
       pcm = audio_stream.read(frames_per_buffer)
 
       current_time = time.time()
@@ -50,16 +52,21 @@ class VoiceActivityMonitor(threading.Thread):
     
   def is_speaking(self):
     return self.__is_speaking
-      
+  
+  def stop(self):
+    self.__running = False
 
-class WakeWordMonitor(threading.Thread):
+
+class WakewordMonitor(threading.Thread):
   __keywords = ["computer"]
 
-  def __init__(self, voice_activity_monitor):
+  def __init__(self):
     super().__init__()
-    self.__vam = voice_activity_monitor
 
   def run(self):
+    self.wait_for_wakeup_word()
+
+  def wait_for_wakeup_word(self):
     porcupine = pvporcupine.create(
       keywords=self.__keywords
     )
@@ -73,7 +80,8 @@ class WakeWordMonitor(threading.Thread):
       input_device_index=pa.get_default_input_device_info()['index']
     )
 
-    while True:
+    result = -1
+    while result == -1:
       pcm = audio_stream.read(porcupine.frame_length)
       pcm = struct.unpack_from("h" * porcupine.frame_length, pcm)
 
@@ -81,31 +89,11 @@ class WakeWordMonitor(threading.Thread):
 
       if result >= 0:
         print(f"Detected keyword {self.__keywords[result]}")
-        
-        data_in = wave.open("/tmp/voice-assista-temp.wav", "wb")
-        data_in.setnchannels(1) # mono
-        data_in.setsampwidth(2)
-        data_in.setframerate(16000)
-
-
-        recorder = Recorder(self.__vam, data_in)
-        recorder.start()
-        recorder.join()
-
-        data_in.close()
-        data_out = wave.open("/tmp/voice-assista-temp.wav", "rb")
-
-        playback = PlayBack(data_out)
-        playback.start()
-        playback.join()
-        
-        data_out.close()
-
-        print(f"speaking stopped")
+    
 
 
 class Recorder(threading.Thread):
-  def __init__(self, voice_activity_monitor: VoiceActivityMonitor, data: bytearray):
+  def __init__(self, voice_activity_monitor: VoiceActivityMonitor, data):
     super().__init__()
     self.__vam = voice_activity_monitor
     self.__data = data
@@ -128,7 +116,7 @@ class Recorder(threading.Thread):
 
 
 class PlayBack(threading.Thread):
-  def __init__(self, data: bytearray):
+  def __init__(self, data):
     super().__init__()
     self.__data = data
   
@@ -149,8 +137,35 @@ class PlayBack(threading.Thread):
     stream.stop_stream()
     stream.close()
 
-vam = VoiceActivityMonitor()
-vam.start()
 
-wwm = WakeWordMonitor(vam)
-wwm.start()
+class VoiceAssistant(threading.Thread):
+  def __init__(self):
+    super().__init__()
+
+  def run(self):
+    vam = VoiceActivityMonitor()
+    vam.start()
+
+    wm = WakewordMonitor()
+    
+    while True:
+      wm.wait_for_wakeup_word()
+
+      data_in = wave.open("/tmp/voice-assista-temp.wav", "wb")
+      data_in.setnchannels(1)
+      data_in.setsampwidth(2)
+      data_in.setframerate(16000)
+
+      recorder = Recorder(vam, data_in)
+      recorder.run()
+
+      data_in.close()
+      data_out = wave.open("/tmp/voice-assista-temp.wav", "rb")
+
+      playback = PlayBack(data_out)
+      playback.run()
+
+      data_out.close()
+
+voice_assistant = VoiceAssistant()
+voice_assistant.start()
