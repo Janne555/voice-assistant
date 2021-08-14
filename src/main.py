@@ -12,6 +12,7 @@ import contextlib
 import typing
 
 pa = pyaudio.PyAudio()
+frames_per_buffer = 512
 
 class VoiceActivityMonitor(threading.Thread):
   __is_speaking = False
@@ -23,6 +24,7 @@ class VoiceActivityMonitor(threading.Thread):
     super().__init__()
     self.__vad.set_mode(1)
     self.__silence_threshold = silence_threshold
+
 
   def run(self):
     frame_duration = 10
@@ -60,29 +62,23 @@ class VoiceActivityMonitor(threading.Thread):
 class WakewordMonitor(threading.Thread):
   __keywords = ["computer"]
 
-  def __init__(self):
+  def __init__(self, audio_stream: pyaudio.Stream):
     super().__init__()
+    self.__audio_stream = audio_stream
+
 
   def run(self):
     self.wait_for_wakeup_word()
+
 
   def wait_for_wakeup_word(self):
     porcupine = pvporcupine.create(
       keywords=self.__keywords
     )
 
-    audio_stream = pa.open(
-      rate=porcupine.sample_rate,
-      channels=1,
-      format=pyaudio.paInt16,
-      input=True,
-      frames_per_buffer=porcupine.frame_length,
-      input_device_index=pa.get_default_input_device_info()['index']
-    )
-
     result = -1
     while result == -1:
-      pcm = audio_stream.read(porcupine.frame_length)
+      pcm = self.__audio_stream.read(porcupine.frame_length)
       pcm = struct.unpack_from("h" * porcupine.frame_length, pcm)
 
       result = porcupine.process(pcm)
@@ -93,25 +89,16 @@ class WakewordMonitor(threading.Thread):
 
 
 class Recorder(threading.Thread):
-  def __init__(self, voice_activity_monitor: VoiceActivityMonitor, data):
+  def __init__(self, voice_activity_monitor: VoiceActivityMonitor, audio_stream: pyaudio.Stream, data):
     super().__init__()
     self.__vam = voice_activity_monitor
     self.__data = data
+    self.__audio_stream = audio_stream
+
 
   def run(self):
-    frames_per_buffer = 512
-
-    audio_stream = pa.open(
-      rate=16000,
-      channels=1,
-      format=pyaudio.paInt16,
-      input=True,
-      frames_per_buffer=frames_per_buffer,
-      input_device_index=pa.get_default_input_device_info()['index']
-    )
-
     while self.__vam.is_speaking():
-      pcm = audio_stream.read(frames_per_buffer)
+      pcm = self.__audio_stream.read(frames_per_buffer)
       self.__data.writeframes(pcm)
 
 
@@ -120,6 +107,7 @@ class PlayBack(threading.Thread):
     super().__init__()
     self.__data = data
   
+
   def run(self):
     stream = pa.open(
       format=pa.get_format_from_width(self.__data.getsampwidth()),
@@ -142,11 +130,21 @@ class VoiceAssistant(threading.Thread):
   def __init__(self):
     super().__init__()
 
+
   def run(self):
+    audio_stream = pa.open(
+      rate=16000,
+      channels=1,
+      format=pyaudio.paInt16,
+      input=True,
+      frames_per_buffer=frames_per_buffer,
+      input_device_index=pa.get_default_input_device_info()['index']
+    )
+
     vam = VoiceActivityMonitor()
     vam.start()
 
-    wm = WakewordMonitor()
+    wm = WakewordMonitor(audio_stream)
     
     while True:
       wm.wait_for_wakeup_word()
@@ -156,7 +154,7 @@ class VoiceAssistant(threading.Thread):
       data_in.setsampwidth(2)
       data_in.setframerate(16000)
 
-      recorder = Recorder(vam, data_in)
+      recorder = Recorder(vam, audio_stream, data_in)
       recorder.run()
 
       data_in.close()
@@ -166,6 +164,7 @@ class VoiceAssistant(threading.Thread):
       playback.run()
 
       data_out.close()
+
 
 voice_assistant = VoiceAssistant()
 voice_assistant.start()
