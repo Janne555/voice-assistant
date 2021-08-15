@@ -9,7 +9,8 @@ pyaudio = "*"
 deepspeech = "*"
 webrtcvad = "*"
 numpy = "*"
-gpiozero = "*"
+gpiozero = {version = "*", platform_machine = "== 'armv7l'"}
+rpi-gpio = {version = "*", platform_machine = "== 'armv7l'"}
 
 [dev-packages]
 
