@@ -18,9 +18,9 @@ def make_raspi_callback():
     if m_type == "wait_for_wake_word":
       raspi_status.set_blinking(600)
     elif m_type == "listen":
-      raspi_status.set_on()
-    elif m_type == "inference":
       raspi_status.set_blinking(300)
+    elif m_type == "inference":
+      raspi_status.set_on()
 
   return raspi_callback
 
