@@ -9,6 +9,8 @@ pa = pyaudio.PyAudio()
 
 def callback(m_type, *args):
   print(m_type, *args)
+  if m_type == "command":
+      command_handler(args[0])
 
 def make_raspi_callback():
   raspi_status = RaspiStatus()
@@ -21,8 +23,16 @@ def make_raspi_callback():
       raspi_status.set_on()
     elif m_type == "inference":
       raspi_status.set_blinking(300)
+    elif m_type == "command":
+      command_handler(args[0])
 
   return raspi_callback
+
+
+def command_handler(command):
+  print(command)
+  if command == "turn off":
+    exit(0)
 
 
 listener = Listener(pa, make_raspi_callback() if is_raspi else callback)
