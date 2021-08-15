@@ -8,6 +8,7 @@ class RaspiStatus():
 
   def __clean_up(self):
     self.__blinker.stop()
+    self.__blinker = Blinker(self.__led)
     self.__led.off()
 
   

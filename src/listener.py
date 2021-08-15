@@ -10,7 +10,7 @@ import numpy as np
 import os
 
 SAMPLE_RATE = 16000
-MODEL_PATH = "models/deepspeech-0.9.3-models.tflite" if os.uname().machine is 'armv7l' else "models/deepspeech-0.9.3-models.pbmm"
+MODEL_PATH = "models/deepspeech-0.9.3-models.tflite" if os.uname().machine == 'armv7l' else "models/deepspeech-0.9.3-models.pbmm"
 SCORER_PATH = "models/deepspeech-0.9.3-models.scorer"
 KEYWORDS = ["computer"]
 
@@ -53,29 +53,30 @@ class Listener(threading.Thread):
 
 
   def run(self):
-    self.wait_for_wake_word()
+    while True:
+      self.wait_for_wake_word()
 
-    rec_bytes = bytearray()
-    ms_since_last_spoke = 0
+      rec_bytes = bytearray()
+      ms_since_last_spoke = 0
 
-    self.__callback("listen")
+      self.__callback("listen")
 
-    while ms_since_last_spoke < 1000:
-      pcm = self.__audio_stream.read(1600)
+      while ms_since_last_spoke < 1000:
+        pcm = self.__audio_stream.read(1600)
 
-      # bytes seem to be double the length of the what is read (2 x int8 -> int16?)
-      for chunk in audio_chunks(pcm, 320):
-        if vad.is_speech(chunk, SAMPLE_RATE):
-          ms_since_last_spoke = 0
-        else:
-          ms_since_last_spoke += 10
+        # bytes seem to be double the length of the what is read (2 x int8 -> int16?)
+        for chunk in audio_chunks(pcm, 320):
+          if vad.is_speech(chunk, SAMPLE_RATE):
+            ms_since_last_spoke = 0
+          else:
+            ms_since_last_spoke += 10
 
-      rec_bytes.extend(pcm)
+        rec_bytes.extend(pcm)
 
-    self.__callback("inference")
-    audio = np.frombuffer(rec_bytes, dtype=np.int16)
-    infered_text = ds.stt(audio)
-    self.__callback("command", infered_text)
+      self.__callback("inference")
+      audio = np.frombuffer(rec_bytes, dtype=np.int16)
+      infered_text = ds.stt(audio)
+      self.__callback("command", infered_text)
     
 
   def wait_for_wake_word(self):

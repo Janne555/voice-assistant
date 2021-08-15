@@ -3,7 +3,7 @@ import pyaudio
 import os
 from raspi_status import RaspiStatus
 
-is_raspi = os.uname().machine is 'armv7l'
+is_raspi = os.uname().machine == 'armv7l'
 
 pa = pyaudio.PyAudio()
 
