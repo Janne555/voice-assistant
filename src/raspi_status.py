@@ -1,26 +1,31 @@
-
-import threading
-
 from blinker import Blinker
 
-class RaspiStatus(threading.Thread):
-  __status = "off"
-  
+class RaspiStatus():  
   def __init__(self):
-    super().__init__()
     from gpiozero import LED
-    self.__led = LED(23)
-  
-  def run(self):
-    blinker = Blinker(self.__led)
+    self.__led = LED(25)
+    self.__blinker = Blinker(self.__led)
 
-    while True:
-      if (self.__status == "blink"):
-        blinker.start()
-      else:
-        blinker.stop()
+  def __clean_up(self):
+    self.__blinker.stop()
+    self.__led.off()
+
+  
+  def set_blinking(self, speed):
+    self.__clean_up()
+    self.__blinker.set_speed(speed)
+    self.__blinker.start()
+
+  
+  def set_off(self):
+    self.__clean_up()
+    self.__led.off()
+
+  
+  def set_on(self):
+    self.__clean_up()
+    self.__led.on()
 
 
 if __name__ == "__main__":
   raspi_status = RaspiStatus()
-  raspi_status.start()

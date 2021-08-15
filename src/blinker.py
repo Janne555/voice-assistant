@@ -1,17 +1,21 @@
 
 import threading
-import asyncio
+import time
 
 class Blinker(threading.Thread):
   __is_running = True
+  __speed = 500
 
-  def __init__(self, led, speed):
+  def __init__(self, led):
     super().__init__()
     self.__led = led
+
+
+  def set_speed(self, speed):
     self.__speed = speed
 
   
-  async def run(self):
+  def run(self):
     self.__is_running = True
     led_on = False
     while self.__is_running:
@@ -20,7 +24,8 @@ class Blinker(threading.Thread):
         self.__led.off()
       else:
         self.__led.on()
-      await asyncio.sleep(self.__speed)
+      
+      time.sleep(self.__speed / 1000)
 
 
   def stop(self):
@@ -29,6 +34,6 @@ class Blinker(threading.Thread):
 
 if __name__ == "__main__":
   from gpiozero import LED
-  led = LED(23)
-  blinker = Blinker(led, 500)
+  led = LED(25)
+  blinker = Blinker(led, 25)
   blinker.start()
