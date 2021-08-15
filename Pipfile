@@ -9,6 +9,7 @@ pyaudio = "*"
 deepspeech = "*"
 webrtcvad = "*"
 numpy = "*"
+gpiozero = "*"
 
 [dev-packages]
 

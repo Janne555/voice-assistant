@@ -34,7 +34,7 @@ def audio_chunks(pcm: bytes, size: int):
     yield chunk
     
     start = end
-    end += 320
+    end += size
 
     chunk = pcm[start:end]
 
@@ -58,9 +58,12 @@ class Listener(threading.Thread):
     rec_bytes = bytearray()
     ms_since_last_spoke = 0
 
+    self.__callback("listen")
+
     while ms_since_last_spoke < 1000:
       pcm = self.__audio_stream.read(1600)
 
+      # bytes seem to be double the length of the what is read (2 x int8 -> int16?)
       for chunk in audio_chunks(pcm, 320):
         if vad.is_speech(chunk, SAMPLE_RATE):
           ms_since_last_spoke = 0
@@ -69,13 +72,14 @@ class Listener(threading.Thread):
 
       rec_bytes.extend(pcm)
 
-
+    self.__callback("inference")
     audio = np.frombuffer(rec_bytes, dtype=np.int16)
     infered_text = ds.stt(audio)
     self.__callback("command", infered_text)
     
 
   def wait_for_wake_word(self):
+    self.__callback("wait_for_wake_word")
     result = -1
     while result == -1:
       pcm = self.__audio_stream.read(porcupine.frame_length)
@@ -84,7 +88,7 @@ class Listener(threading.Thread):
       result = porcupine.process(pcm)
 
       if result >= 0:
-        self.__callback("keyword", KEYWORDS[result])
+        self.__callback("wakeword", KEYWORDS[result])
 
 
 if __name__ == "__main__":
