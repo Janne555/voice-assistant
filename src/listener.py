@@ -52,6 +52,7 @@ class Listener(threading.Thread):
       input_device_index=pa.get_default_input_device_info()['index']
     )
     self.__callback = callback
+    self.__inferrer = RemoteInferrer()
 
 
   def run(self):
@@ -76,9 +77,7 @@ class Listener(threading.Thread):
         rec_bytes.extend(pcm)
 
       self.__callback("inference")
-      inferrer = RemoteInferrer()
-      inferrer.infer(rec_bytes)
-      infered_text = inferrer.infer(rec_bytes)
+      infered_text = self.__inferrer.infer(rec_bytes)
       self.__callback("command", infered_text)
     
 
