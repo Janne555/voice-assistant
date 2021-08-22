@@ -9,6 +9,8 @@ import deepspeech
 import numpy as np
 import os
 
+from remote_inferrer import RemoteInferrer
+
 SAMPLE_RATE = 16000
 MODEL_PATH = "models/deepspeech-0.9.3-models.tflite" if os.uname().machine == 'armv7l' else "models/deepspeech-0.9.3-models.pbmm"
 SCORER_PATH = "models/deepspeech-0.9.3-models.scorer"
@@ -74,8 +76,9 @@ class Listener(threading.Thread):
         rec_bytes.extend(pcm)
 
       self.__callback("inference")
-      audio = np.frombuffer(rec_bytes, dtype=np.int16)
-      infered_text = ds.stt(audio)
+      inferrer = RemoteInferrer()
+      inferrer.infer(rec_bytes)
+      infered_text = inferrer.infer(rec_bytes)
       self.__callback("command", infered_text)
     
 

@@ -11,6 +11,7 @@ webrtcvad = "*"
 numpy = "*"
 gpiozero = {version = "*", platform_machine = "== 'armv7l'"}
 rpi-gpio = {version = "*", platform_machine = "== 'armv7l'"}
+python-dotenv = "*"
 
 [dev-packages]
 

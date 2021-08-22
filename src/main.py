@@ -1,3 +1,6 @@
+from dotenv import load_dotenv
+load_dotenv()
+
 from listener import Listener
 import pyaudio
 import os
